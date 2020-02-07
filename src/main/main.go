@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"os"
 
-	ag "mirantis.com/tungsten-operator/tf-status-agregator/src/agregator"
+	ag "mirantis.com/tungsten-operator/tf-status-aggregator/src/aggregator"
 )
 
 func handle(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Requested: /")
-	out := "TungsteFabric status agregator\n"
+	out := "TungsteFabric status aggregator\n"
 	out += "\nRoutes:\n"
 	out += "\n\t/pod-list\n\tReturns information about all detected \"tf-status\" pods\n\tTFStatus pod have to have following label: \"tungstenfabric\": \"status\"\n"
 	out += "\n\t/status/json\n\tReturns agregated json from all \"tf-status\" pods.\n"
@@ -23,7 +23,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 func main() {
 	ag := ag.New()
 	h := Handler{}
-	h.SetAgregator(ag)
+	h.SetAggregator(ag)
 
 	fmt.Println("Starting server...")
 

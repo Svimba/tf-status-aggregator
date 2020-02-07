@@ -1,8 +1,8 @@
-# Tungsten Fabric status agregator
+# Tungsten Fabric status aggregator
 
 > NOTE: This project is *pre-release* stage
 
-Agregator TF services takes all "tf-status" nodes from K8s API which are labeled by following label.
+Aggregator TF services takes all "tf-status" nodes from K8s API which are labeled by following label.
 ```
 tungstenfabric: status
 ```

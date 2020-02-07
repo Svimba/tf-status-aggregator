@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"strings"
 
-	"mirantis.com/tungsten-operator/tf-status-agregator/src/agregator"
+	"mirantis.com/tungsten-operator/tf-status-aggregator/src/aggregator"
 )
 
 // Handler struct
 type Handler struct {
-	ag *agregator.Agregator
+	ag *aggregator.Aggregator
 }
 
-// SetAgregator func
-func (h *Handler) SetAgregator(ag *agregator.Agregator) {
+// SetAggregator func
+func (h *Handler) SetAggregator(ag *aggregator.Aggregator) {
 	h.ag = ag
 }
 

@@ -1,4 +1,4 @@
-module mirantis.com/tungsten-operator/tf-status-agregator
+module mirantis.com/tungsten-operator/tf-status-aggregator
 
 go 1.13
 

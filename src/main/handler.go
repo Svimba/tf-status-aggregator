@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -19,8 +20,15 @@ func (h *Handler) SetAggregator(ag *aggregator.Aggregator) {
 }
 
 func (h *Handler) handleListOfPod(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain")
-	podList := h.ag.GetPodList()
+
+	log.Println("Requested: " + r.URL.Path)
+	podList, err := h.ag.GetPodList()
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
 	var out string
 	for _, pod := range podList.Items {
 		out += fmt.Sprintf("---------------------------------------------------\n")
@@ -31,33 +39,71 @@ func (h *Handler) handleListOfPod(w http.ResponseWriter, r *http.Request) {
 		out += fmt.Sprintf("Host: %v\n\n", pod.Spec.NodeName)
 	}
 
-	fmt.Println("Requested: /pod-list")
-	fmt.Fprintf(w, out)
+	w.Header().Add("Content-Type", "text/plain")
+	_, err = fmt.Fprintf(w, out)
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
 }
 
 func (h *Handler) handleStatusJSON(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Requested: /status/json")
-	w.Header().Add("Content-Type", "application/json")
-	jsons := h.ag.GetJSONStatusForAll()
+	log.Println("Requested: " + r.URL.Path)
+
+	jsons, err := h.ag.GetJSONStatusForAll()
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
 	out := strings.Join(jsons, ",")
-	fmt.Fprintf(w, out)
+
+	w.Header().Add("Content-Type", "application/json")
+	_, err = fmt.Fprintf(w, out)
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
 }
 
 func (h *Handler) handleStatusPlainNode(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Requested: /status/node")
-	w.Header().Add("Content-Type", "plan/text")
-	out := h.ag.GetPlainStatusByNode()
+	log.Println("Requested: " + r.URL.Path)
 
-	fmt.Fprintf(w, out)
+	out, err := h.ag.GetPlainStatusByNode()
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Add("Content-Type", "plan/text")
+	_, err = fmt.Fprintf(w, out)
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
 
 }
 
 func (h *Handler) handleStatusPlainGroup(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Requested: /status/group")
+	log.Println("Requested: " + r.URL.Path)
+
+	out, err := h.ag.GetPlainStatusByGroup()
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
 	w.Header().Add("Content-Type", "plan/text")
-	out := h.ag.GetPlainStatusByGroup()
-
-	fmt.Fprintf(w, out)
-
+	_, err = fmt.Fprintf(w, out)
+	if err != nil {
+		log.Fatal("URL: "+r.URL.Path, err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
 }

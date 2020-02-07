@@ -10,22 +10,29 @@ import (
 )
 
 func handle(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Requested: /")
 	out := "TungsteFabric status aggregator\n"
+
+	if r.URL.Path != "/" {
+		out += "Unknown URL please use one of the following paths\n"
+	}
+
 	out += "\nRoutes:\n"
 	out += "\n\t/pod-list\n\tReturns information about all detected \"tf-status\" pods\n\tTFStatus pod have to have following label: \"tungstenfabric\": \"status\"\n"
 	out += "\n\t/status/json\n\tReturns agregated json from all \"tf-status\" pods.\n"
 	out += "\n\t/status or /status/node\n\tReturns formated output from all detected \"tf-status\" pods\n\tat standart format for each node\n"
 	out += "\n\t/status/group\n\tReturns formated output from all detected \"tf-status\" pod\n\tagregated by service for all nodes which handles the service"
-	fmt.Fprintf(w, out)
+
+	_, err := fmt.Fprintf(w, out)
+	if err != nil {
+		log.Fatal("URL: / ", err)
+		http.Error(w, err.Error(), 500)
+	}
 }
 
 func main() {
 	ag := ag.New()
 	h := Handler{}
 	h.SetAggregator(ag)
-
-	fmt.Println("Starting server...")
 
 	http.HandleFunc("/", handle)
 	http.HandleFunc("/pod-list", h.handleListOfPod)
@@ -38,5 +45,6 @@ func main() {
 	if len(serverPort) == 0 {
 		serverPort = "80"
 	}
+	log.Printf("Starting server on port %s", serverPort)
 	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
 }

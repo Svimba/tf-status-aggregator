@@ -36,34 +36,32 @@ func New() *Aggregator {
 func (ag *Aggregator) setClient() {
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Fatal(err, "")
+		log.Fatal(err, "Cannot get K8s config")
 		os.Exit(1)
 	}
-	// clientset, err := apiextensionsclient.NewForConfig(cfg)
 	cli, err := client.New(cfg, client.Options{})
 	if err != nil {
-		log.Fatal(err, "")
+		log.Fatal(err, "Cannot create new client")
 		os.Exit(1)
 	}
 	ag.client = cli
 }
 
 // GetPodList func
-func (ag *Aggregator) GetPodList() *corev1.PodList {
+func (ag *Aggregator) GetPodList() (*corev1.PodList, error) {
 	podList := &corev1.PodList{}
 	err := ag.client.List(ag.context, podList, client.MatchingLabels{"tungstenfabric": "status"})
 	if err != nil {
-		fmt.Printf("ERR client output %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Cannot get list of tf-status nodes %v", err)
+		return nil, err
 	}
-
-	return podList
+	return podList, err
 }
 
 // GetPodJSONStatus func
 func (ag *Aggregator) GetPodJSONStatus(podIP string, ch chan<- string, wg *sync.WaitGroup) {
 	defer wg.Done()
-	fmt.Printf("INFO request %s\n", podIP)
+	log.Printf("Requesting %s for status\n", podIP)
 
 	nodePort := os.Getenv("NODE_PORT")
 	if len(nodePort) == 0 {
@@ -72,20 +70,24 @@ func (ag *Aggregator) GetPodJSONStatus(podIP string, ch chan<- string, wg *sync.
 
 	resp, err := http.Get("http://" + podIP + ":" + nodePort + "/json")
 	if err != nil {
-		fmt.Printf("ERR request %s, %v\n", podIP, err)
+		log.Fatalf("Cannot get status from %s, error:  %v\n", podIP, err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("ERR get content %s, %v\n", podIP, err)
+		log.Fatalf("Cannot read output from %s, error: %v\n", podIP, err)
 	}
-	fmt.Printf("INFO json from %s has been recieved\n", podIP)
+	log.Printf("Status from %s has been received successfully\n", podIP)
 	ch <- string(body)
 }
 
 // GetJSONStatusForAll func
-func (ag *Aggregator) GetJSONStatusForAll() []string {
-	podList := ag.GetPodList()
+func (ag *Aggregator) GetJSONStatusForAll() ([]string, error) {
+	podList, err := ag.GetPodList()
+	if err != nil {
+		return nil, err
+	}
+
 	var wg sync.WaitGroup
 	channel := make(chan string, podList.Size())
 	jsonOuts := []string{}
@@ -104,19 +106,23 @@ func (ag *Aggregator) GetJSONStatusForAll() []string {
 		jsonOuts = append(jsonOuts, ch)
 	}
 
-	return jsonOuts
+	return jsonOuts, nil
 }
 
 // GetPlainStatusByNode func
-func (ag *Aggregator) GetPlainStatusByNode() string {
-	nodes := ag.GetJSONStatusForAll()
+func (ag *Aggregator) GetPlainStatusByNode() (string, error) {
+	nodes, err := ag.GetJSONStatusForAll()
+	if err != nil {
+		return "", err
+	}
 
 	var results []TFStatus
 	for _, node := range nodes {
 		var result TFStatus
 		err := json.Unmarshal([]byte(node), &result)
 		if err != nil {
-			fmt.Printf("ERR Unmarshal: %v", err)
+			log.Fatalf("Cannot unmarshal input data: %v", err)
+			return "", err
 		}
 		results = append(results, result)
 	}
@@ -132,8 +138,7 @@ func (ag *Aggregator) GetPlainStatusByNode() string {
 		out += fmt.Sprintf("\n")
 	}
 
-	fmt.Printf("%s", out)
-	return out
+	return out, nil
 }
 
 func (ag *Aggregator) getPlainStatusOfGroup(group *TFGroup) string {
@@ -164,15 +169,17 @@ func (ag *Aggregator) getPlainStatusOfGroup(group *TFGroup) string {
 }
 
 // GetPlainStatusByGroup func
-func (ag *Aggregator) GetPlainStatusByGroup() string {
-	nodes := ag.GetJSONStatusForAll()
-
+func (ag *Aggregator) GetPlainStatusByGroup() (string, error) {
+	nodes, err := ag.GetJSONStatusForAll()
+	if err != nil {
+		return "", err
+	}
 	var results []TFStatus
 	for _, node := range nodes {
 		var result TFStatus
 		err := json.Unmarshal([]byte(node), &result)
 		if err != nil {
-			fmt.Printf("ERR Unmarshal: %v", err)
+			log.Fatalf("Cannot unmarshal input data: %v", err)
 		}
 		results = append(results, result)
 	}
@@ -189,8 +196,7 @@ func (ag *Aggregator) GetPlainStatusByGroup() string {
 		}
 	}
 
-	fmt.Printf("%s", out)
-	return out
+	return out, nil
 }
 
 func generateArrayForGroups(statuses []TFStatus) map[string]map[string][][]string {
@@ -198,17 +204,13 @@ func generateArrayForGroups(statuses []TFStatus) map[string]map[string][][]strin
 	data := make(map[string]map[string][][]string)
 	for _, node := range statuses {
 		nameN := node.PodName
-		fmt.Printf("Node: %s\n", nameN)
-
 		for _, grp := range node.Groups {
 			nameG := grp.Name
-			fmt.Printf("Group: %s\n", nameG)
 			if _, ok := data[nameG]; !ok {
 				data[nameG] = make(map[string][][]string)
 			}
 			for _, svc := range grp.Services {
 				nameS := svc.Name
-				fmt.Printf("Service: %s\n", nameS)
 				data[nameG][nameS] = append(data[nameG][nameS], []string{nameN, svc.Status})
 			}
 		}

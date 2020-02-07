@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/google/cadvisor v0.35.0
+	github.com/gorilla/mux v1.7.3
 	github.com/olekukonko/tablewriter v0.0.4
 	k8s.io/api v0.17.2
 	k8s.io/apiextensions-apiserver v0.0.0-20190918161926-8f644eb6e783

@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gorilla/mux"
 	ag "mirantis.com/tungsten-operator/tf-status-aggregator/src/aggregator"
 )
 
-func handle(w http.ResponseWriter, r *http.Request) {
+func rootHandler(w http.ResponseWriter, r *http.Request) {
 	out := "TungsteFabric status aggregator\n"
 
 	if r.URL.Path != "/" {
@@ -34,12 +35,14 @@ func main() {
 	h := Handler{}
 	h.SetAggregator(ag)
 
-	http.HandleFunc("/", handle)
-	http.HandleFunc("/pod-list", h.handleListOfPod)
-	http.HandleFunc("/status/json", h.handleStatusJSON)
-	http.HandleFunc("/status/node", h.handleStatusPlainNode)
-	http.HandleFunc("/status", h.handleStatusPlainNode)
-	http.HandleFunc("/status/group", h.handleStatusPlainGroup)
+	r := mux.NewRouter()
+	r.HandleFunc("/", rootHandler).Methods("GET")
+	r.HandleFunc("/pod-list", h.handleListOfPod).Methods("GET")
+	r.HandleFunc("/status/json", h.handleStatusJSON).Methods("GET")
+	r.HandleFunc("/status/node", h.handleStatusPlainNode).Methods("GET")
+	r.HandleFunc("/status", h.handleStatusPlainNode).Methods("GET")
+	r.HandleFunc("/status/group", h.handleStatusPlainGroup).Methods("GET")
+	http.Handle("/", r)
 
 	serverPort := os.Getenv("SERVER_PORT")
 	if len(serverPort) == 0 {
